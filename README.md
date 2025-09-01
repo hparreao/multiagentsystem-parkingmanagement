@@ -248,44 +248,41 @@ Before using the system, you need to create the agents:
 ## System Architecture Diagram
 
 ```mermaid
-graph TD
-    A[Mobile App] -->|REST API| B[FastAPI Server]
-    B -->|XMPP| C[SPADE Agents]
+sequenceDiagram
+    participant D as Driver
+    participant PM as Parking Manager
+    participant PZM as Parking Zone Manager
+    participant PS as Parking Spot
+
+    D->>PM: Requests parking spot with preferences
+    PM->>PZM: Checks parking zone that best matches preferences with vacant spots
+    PZM->>PS: Broadcasts auction start to empty parking spots
     
-    C --> D[Driver Agent]
-    C --> E[Parking Zone Manager Agent]
-    C --> F[Parking Spot Module Agent]
+    Note over PS: While auctioning
+    PS-->>PS: Bids
+    PS-->>PS: Broadcasts bidding values
+    PS-->>PZM: Broadcasts end of auction
     
-    F -->|MQTT| G[ESP32 Sensor Module]
-    H[ESP32 Display Module] -->|MQTT| F
-    G -->|WiFi| I[(MQTT Broker)]
-    H -->|WiFi| I
+    PZM-->>PM: Informs winning spot
+    PM-->>D: Informs user of selected spot and asks for confirmation
+    D-->>PM: Confirms spot
+    PM-->>D: Traces route to parking spot
     
-    D -->|Request Parking| E
-    E -->|Auction| F
-    F -->|Availability Status| E
-    E -->|Spot Assignment| D
-    D -->|Navigation| A
+    Note over D: Arrives near parking spot
     
-    B -->|Sensor Data| G
-    F -->|Status Updates| B
+    D->>PS: Attempts connection with parking module
+    PS->>PS: Detects parking spot occupancy and updates value Saves timestamp
+    PS-->>PZM: Informs that is no longer vacant and user ID
+    PZM-->>PM: Informs updated zone occupancy
+    PM-->>D: Informs arrival
     
-    style A fill:#ffe4b2,stroke:#333
-    style B fill:#b2fab4,stroke:#333
-    style C fill:#b2fab4,stroke:#333
-    style D fill:#c2c2f0,stroke:#333
-    style E fill:#c2c2f0,stroke:#333
-    style F fill:#c2c2f0,stroke:#333
-    style G fill:#ffd700,stroke:#333
-    style H fill:#ffd700,stroke:#333
-    style I fill:#ffb6c1,stroke:#333
+    Note over D: Leaves parking spot
     
-    classDef component fill:#fff,stroke:#333;
-    classDef mobile fill:#ffe4b2,stroke:#333;
-    classDef backend fill:#b2fab4,stroke:#333;
-    classDef agent fill:#c2c2f0,stroke:#333;
-    classDef iot fill:#ffd700,stroke:#333;
-    classDef broker fill:#ffb6c1,stroke:#333;
+    PS->>PS: Detects parking spot occupancy and updates value Calculates time interval
+    PS-->>PZM: Informs that is no longer vacant, user ID and interval
+    PZM-->>PM: Informs updated zone occupancy
+    PM-->>D: Informs payment
+    D-->>PM: Pays
 ```
 
 ## How It Works
